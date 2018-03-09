@@ -1,28 +1,22 @@
-#### Algorithmic Classical Music Generator  
-#### Final Project - Programming Languages: Python  
-#### Professor Lawrence Stead  
-#### By: Christopher Chin (cjc2214)  
+Algorithmic Classical Music Generator
+=========================
 
-*************
+[Bach MIDI Files](https://github.com/jamesrobertlloyd/infinite-bach/tree/master/data/chorales/midi)
+[MIDI Files Harmonic Labels](https://archive.ics.uci.edu/ml/datasets/Bach+Choral+Harmony)
+Click on highlighted "Data Folder" and download "jsbach_chorals_harmony.zip" file 
+Downloaded file will have a .data file and .names file
+Change extension .data to .txt 
+Can convert .txt to .csv in Excel
 
-##### **Motivation and Problems/Obstacles**  
+Systems:
+- Task 1 - Acoustic scene classification
+- Task 3 - Sound event detection in real life audio
 
-I feel Python is a perfect programming language and tool for   
-composing and music-making. For my final project, I wanted to use the   
-programming skills I learned from the course to create an algorithmic   
-classical music generator, which would endlessly generate new pieces in the  
-classical style. However, the project turned into a more difficult undertaking
-than I expected - although the music follows most of the rules of   
-harmony/voice-leading in theory, I realized that creating distinct, coherent,  
-and recognizable melodies involves more than programming in rules (perhaps   
-there is a "human" element missing, or just additional programming needed   
-to make the melodies more like those in the classical style). With more time,  
-I would want to continue refining the program, improving upon the creation of  
-melodies, and implementing more structure/form (having melodies and rhythmic  
-patterns repeat occasionally througout the composition, etc.).  
+Viterbi adapted from Wikipedia page:
+https://en.wikipedia.org/wiki/Viterbi_algorithm
 
-*************
-##### **Modules and Installation Instructions**  
+Modules and Installation Instructions
+=========================
 
 **Modules used:** midiutil, pygame, argparse, fluidsynth(optional)  
 
@@ -52,7 +46,7 @@ https://code.google.com/archive/p/midiutil/downloads
 
 **How to download pygame:** 
 1. Follow the instructions given on the following webpage:
-http://florian-berger.de/en/articles/installing-pygame-for-python-3-on-os-x/
+https://www.pygame.org/wiki/GettingStarted
 
 
 **How to download FluidSynth (optional as described above):** 
@@ -90,8 +84,9 @@ command line:
     .wav file, and the second converts that to an .mp3 file). Now you can play 
     the .mp3 file (from iTunes, etc.). 
 
-*************
-##### **How the program works**
+
+How The Program Works
+=========================
 
 The "midiutil" module contains methods for specifying MIDI, a format
 commonly used by software to specify musical notes, and methods for creating
