@@ -136,6 +136,7 @@ class composition:
                                  Shape: [n_labels]
                             
         '''
+        eps = np.finfo(np.float).eps
         progression = []    
         progression.append(self.tonic)
         flag = 0
@@ -400,6 +401,7 @@ labels = labels[0]
 
 trans_mat_df = pandas.read_csv('trans_mat.csv')
 trans_mat = trans_mat_df.to_dict()
+trans_mat = {int(key):trans_mat[key] for key in trans_mat}
 
 c = composition(roots,labels,trans_mat,args.duration)
 c.play()
