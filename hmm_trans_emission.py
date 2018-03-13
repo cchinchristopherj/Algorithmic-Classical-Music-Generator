@@ -8,6 +8,7 @@ import numpy as np
 import pandas
 import glob
 import random
+import csv
 
 # Read the harmonic labels csv file into a Pandas DataFrame 
 filename = 'jsbach_chorals_harmony.csv'
