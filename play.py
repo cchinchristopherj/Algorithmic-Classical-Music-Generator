@@ -11,11 +11,6 @@ import pygame
 import random
 import argparse
 
-# Argparse takes in the duration of playtime desired by user as float
-parser = argparse.ArgumentParser()
-parser.add_argument('duration', type = float, help = 'duration of composition')
-args = parser.parse_args()
-
 class harmony:
     ''' Harmony Class
             Stores information about the (MIDI) notes in the input label 
@@ -389,6 +384,11 @@ class composition:
         while pygame.mixer.music.get_busy():
             pygame.time.Clock().tick(10)
 
+# Argparse takes in the duration of playtime desired by user as float
+parser = argparse.ArgumentParser()
+parser.add_argument('duration', type = float, help = 'duration of composition')
+args = parser.parse_args()
+       
 # Read in the roots, labels, and trans_mat dictionaries generated
 # by the hmm_trans_emission.py program 
 roots_df = pandas.read_csv('roots.csv')
