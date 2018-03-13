@@ -10,6 +10,155 @@ import glob
 import random
 import csv
 
+def update_event_list(df,event_list,event_num,ii):
+    ''' Update_event_list Method
+            Updates the input event_list, adding 1 to the corresponding 
+            MIDI note mod 12 if it is present in the current event, and
+            subtracting 1 from the corresponding MIDI note mod 12 if it
+            is absent from the current event. 
+            A MIDI note is present if its velocity is greater than 0.0
+            and a MIDI note is absent if its velocity is 0.0
+            
+            Args:
+                df: Pandas DataFrame of MIDI information 
+                    Columns: Features; Ex: 'Velocity'
+                    Rows: Examples 
+                event_list: 2-D Array of event information (i.e. 12 features
+                            each corresponding to the MIDI notes mod 12, with
+                            1 indicating note is present and 0 indicating note
+                            is absent)
+                            Shape: [n_features=12,n_examples)
+                event_num: Integer indicating the number of the current event
+                ii: Integer indicating the current row under analysis in the
+                    Pandas DataFrame
+            Returns:
+                event_list: 2-D Array of event information (updated)
+        '''
+    if df.iloc[ii,5] > 0.0:
+        event_list[event_num,df.iloc[ii,4]%12] += 1
+    else:
+        event_list[event_num,df.iloc[ii,4]%12] -= 1
+    return event_list
+
+def trans_prob(df_y,lengths_list,labels):
+    ''' Trans_prob Method
+            Generates the transition probability matrix 
+            
+            Args:
+                df_y: 2-D Numpy Array of harmonic labels for each event 
+                      Shape: [1,n_examples]
+                lengths_list: 1-D Array of indexes for the dataset as ints
+                              (i.e. indicates the indexes into the event_list
+                              array of where each piece in the dataset begins 
+                              and ends)
+                              Shape: [n_pieces]
+                labels: Dictionary of harmonies and corresponding integer labels
+                        Keys: Harmonies as strings, Ex: 'C_M'
+                        Values: Corresponding (arbitrary) integer label
+                        ranging from 0 to 143
+            Returns:
+                trans_mat: Transition probability matrix dictionary
+                           Keys: Initial States
+                           Values: Dictionaries
+                                   Keys: Final States
+                                   Values: Probability of transitioning from the
+                                   initial states to final states 
+        '''
+    df_y = np.squeeze(df_y)
+    trans_mat = {}
+    # Initialize trans_mat dictionary with zeros 
+    for ii in labels.values():
+        trans_mat[ii] = {}
+        for jj in labels.values():
+            trans_mat[ii][jj] = 0
+    # Since the event_list traverses through all the pieces in the dataset 
+    # sequentially, ignore harmonic transitions from the end of one piece to the
+    # beginning of the next (as these are arbitrary). These transitions are 
+    # indicated by the indexes in lengths_list 
+    for ii in range(1,len(df_y)):
+        if ii in lengths_list:
+            pass
+        # Add 1 if a transition from one harmony to another occurs 
+        else:
+            trans_mat[df_y[ii-1]][df_y[ii]] += 1
+    for ii in trans_mat.keys():
+        values_sum = sum(trans_mat[ii].values())
+        # If the sum of all values for a label is 0, convert zeros to eps 
+        # This ensures, when using the viterbi algorithm, that the probability
+        # of an event with zero frequency does not become 0 (instead, it becomes
+        # very low through multiplication by eps) 
+        for jj in trans_mat[ii].keys():
+            if values_sum == 0:
+                trans_mat[ii][jj] = eps
+            # Otherwise, divide each value for a label by the sum of all values 
+            # corresponding to the label so that all probabilities sum to 1 
+            else:
+                trans_mat[ii][jj] = trans_mat[ii][jj]/values_sum
+                if trans_mat[ii][jj] == 0:
+                    trans_mat[ii][jj] = eps
+    return trans_mat
+
+def emission_prob(df_y,event_list,labels):
+    ''' Emission_prob Method
+            Generates the emission probability matrix 
+            
+            Args:
+                df_y: 2-D Numpy Array of harmonic labels for each event 
+                      Shape: [1,n_examples]
+                event_list: 2-D Array of event information (i.e. 12 features
+                            each corresponding to the MIDI notes mod 12, with
+                            1 indicating note is present and 0 indicating note
+                            is absent)
+                            Shape: [n_features=12,n_examples)
+                labels: Dictionary of harmonies and corresponding integer labels
+                        Keys: Harmonies as strings, Ex: 'C_M'
+                        Values: Corresponding (arbitrary) integer label
+                        ranging from 0 to 143
+            Returns:
+                emission_mat: Emission probability matrix dictionary
+                              Keys: Current States
+                              Values: Dictionaries
+                                    Keys: Observations 
+                                    Values: Probability of observing each observation
+                                    given the current state. Note that each 
+                                    observation's probability, given the current state,
+                                    is evaluated independently of the others (i.e. the 
+                                    sum of all the values does not equal 1)
+        '''
+    df_y = np.squeeze(df_y)
+    # Find all unique harmonic labels and the number of times they occur 
+    unique_labels,counts = np.unique(df_y,return_counts=True)
+    unique_dict = {}
+    # Create a dictionary of unique labels and corresponding counts 
+    for ii,jj in enumerate(unique_labels):
+        unique_dict[jj] = counts[ii] 
+    emission_mat = {}
+    # Initialize trans_mat dictionary with zeros 
+    for ii in labels.values():
+        emission_mat[ii] = {}
+        for jj in np.arange(event_list.shape[0]):
+            emission_mat[ii][jj] = 0
+    # Add data from event_list to the corresponding key and value
+    # Ex: If an event in event_list occurs for state 1, add the data
+    # from event_list to the key corresponding to state 1 
+    for ii in range(len(df_y)):
+        for jj,kk in enumerate(event_list[:,ii]):
+            emission_mat[df_y[ii]][jj] += kk
+    for ii in emission_mat.keys():
+        for jj in emission_mat[ii].keys():
+            # Divide every event's value by the total number of times the state 
+            # occurred to obtain the probability that that event occurs
+            # Ex: If state 1 occurred 3 times, divide every value corresponding
+            # to state 1 by 3. 
+            # In addition, replace values of 0 by eps to ensure that the probability
+            # of an event with zero frequency does not become 0 (instead, it becomes
+            # very low through multiplication by eps) 
+            if ii in unique_dict.keys():
+                emission_mat[ii][jj] = emission_mat[ii][jj]/unique_dict[ii]
+            if emission_mat[ii][jj] == 0:
+                emission_mat[ii][jj] = eps; 
+    return emission_mat
+
 # Read the harmonic labels csv file into a Pandas DataFrame 
 filename = 'jsbach_chorals_harmony.csv'
 df_y = pandas.read_csv(filename,usecols=[16],header=None,skipinitialspace=True)
@@ -81,36 +230,6 @@ for filename in filenames:
     df_temp = df_temp.reset_index(drop=True)
     all_data = all_data.append(df_temp,ignore_index=True)
 
-def update_event_list(df,event_list,event_num,ii):
-    ''' Update_event_list Method
-            Updates the input event_list, adding 1 to the corresponding 
-            MIDI note mod 12 if it is present in the current event, and
-            subtracting 1 from the corresponding MIDI note mod 12 if it
-            is absent from the current event. 
-            A MIDI note is present if its velocity is greater than 0.0
-            and a MIDI note is absent if its velocity is 0.0
-            
-            Args:
-                df: Pandas DataFrame of MIDI information 
-                    Columns: Features; Ex: 'Velocity'
-                    Rows: Examples 
-                event_list: 2-D Array of event information (i.e. 12 features
-                            each corresponding to the MIDI notes mod 12, with
-                            1 indicating note is present and 0 indicating note
-                            is absent)
-                            Shape: [n_features=12,n_examples)
-                event_num: Integer indicating the number of the current event
-                ii: Integer indicating the current row under analysis in the
-                    Pandas DataFrame
-            Returns:
-                event_list: 2-D Array of event information (updated)
-        '''
-    if df.iloc[ii,5] > 0.0:
-        event_list[event_num,df.iloc[ii,4]%12] += 1
-    else:
-        event_list[event_num,df.iloc[ii,4]%12] -= 1
-    return event_list
-
 # Use the time informaton from the all_data Pandas DataFrame to create a numpy
 # array "event_list" which contains the relevant information for each individual
 # event 
@@ -145,125 +264,9 @@ event_list[event_list>0] = 1
 
 eps = np.finfo(np.float).eps
 
-def trans_prob(df_y,lengths_list,labels):
-    ''' Trans_prob Method
-            Generates the transition probability matrix 
-            
-            Args:
-                df_y: 2-D Numpy Array of harmonic labels for each event 
-                      Shape: [1,n_examples]
-                lengths_list: 1-D Array of indexes for the dataset as ints
-                              (i.e. indicates the indexes into the event_list
-                              array of where each piece in the dataset begins 
-                              and ends)
-                              Shape: [n_pieces]
-                labels: Dictionary of harmonies and corresponding integer labels
-                        Keys: Harmonies as strings, Ex: 'C_M'
-                        Values: Corresponding (arbitrary) integer label
-                        ranging from 0 to 143
-            Returns:
-                trans_mat: Transition probability matrix dictionary
-                           Keys: Initial States
-                           Values: Dictionaries
-                                   Keys: Final States
-                                   Values: Probability of transitioning from the
-                                   initial states to final states 
-        '''
-    df_y = np.squeeze(df_y)
-    trans_mat = {}
-    # Initialize trans_mat dictionary with zeros 
-    for ii in labels.values():
-        trans_mat[ii] = {}
-        for jj in labels.values():
-            trans_mat[ii][jj] = 0
-    # Since the event_list traverses through all the pieces in the dataset 
-    # sequentially, ignore harmonic transitions from the end of one piece to the
-    # beginning of the next (as these are arbitrary). These transitions are 
-    # indicated by the indexes in lengths_list 
-    for ii in range(1,len(df_y)):
-        if ii in lengths_list:
-            pass
-        # Add 1 if a transition from one harmony to another occurs 
-        else:
-            trans_mat[df_y[ii-1]][df_y[ii]] += 1
-    for ii in trans_mat.keys():
-        values_sum = sum(trans_mat[ii].values())
-        # If the sum of all values for a label is 0, convert zeros to eps 
-        # This ensures, when using the viterbi algorithm, that the probability
-        # of an event with zero frequency does not become 0 (instead, it becomes
-        # very low through multiplication by eps) 
-        for jj in trans_mat[ii].keys():
-            if values_sum == 0:
-                trans_mat[ii][jj] = eps
-            # Otherwise, divide each value for a label by the sum of all values 
-            # corresponding to the label so that all probabilities sum to 1 
-            else:
-                trans_mat[ii][jj] = trans_mat[ii][jj]/values_sum
-                if trans_mat[ii][jj] == 0:
-                    trans_mat[ii][jj] = eps
-    return trans_mat
+# Generate the transition and emission probability matrices using the event_list
+# (observations) and df_y (states) 
 trans_mat = trans_prob(df_y,lengths_list,labels)
-
-def emission_prob(df_y,event_list,labels):
-    ''' Emission_prob Method
-            Generates the emission probability matrix 
-            
-            Args:
-                df_y: 2-D Numpy Array of harmonic labels for each event 
-                      Shape: [1,n_examples]
-                event_list: 2-D Array of event information (i.e. 12 features
-                            each corresponding to the MIDI notes mod 12, with
-                            1 indicating note is present and 0 indicating note
-                            is absent)
-                            Shape: [n_features=12,n_examples)
-                labels: Dictionary of harmonies and corresponding integer labels
-                        Keys: Harmonies as strings, Ex: 'C_M'
-                        Values: Corresponding (arbitrary) integer label
-                        ranging from 0 to 143
-            Returns:
-                emission_mat: Emission probability matrix dictionary
-                              Keys: Current States
-                              Values: Dictionaries
-                                    Keys: Observations 
-                                    Values: Probability of observing each observation
-                                    given the current state. Note that each 
-                                    observation's probability, given the current state,
-                                    is evaluated independently of the others (i.e. the 
-                                    sum of all the values does not equal 1)
-        '''
-    df_y = np.squeeze(df_y)
-    # Find all unique harmonic labels and the number of times they occur 
-    unique_labels,counts = np.unique(df_y,return_counts=True)
-    unique_dict = {}
-    # Create a dictionary of unique labels and corresponding counts 
-    for ii,jj in enumerate(unique_labels):
-        unique_dict[jj] = counts[ii] 
-    emission_mat = {}
-    # Initialize trans_mat dictionary with zeros 
-    for ii in labels.values():
-        emission_mat[ii] = {}
-        for jj in np.arange(event_list.shape[0]):
-            emission_mat[ii][jj] = 0
-    # Add data from event_list to the corresponding key and value
-    # Ex: If an event in event_list occurs for state 1, add the data
-    # from event_list to the key corresponding to state 1 
-    for ii in range(len(df_y)):
-        for jj,kk in enumerate(event_list[:,ii]):
-            emission_mat[df_y[ii]][jj] += kk
-    for ii in emission_mat.keys():
-        for jj in emission_mat[ii].keys():
-            # Divide every event's value by the total number of times the state 
-            # occurred to obtain the probability that that event occurs
-            # Ex: If state 1 occurred 3 times, divide every value corresponding
-            # to state 1 by 3. 
-            # In addition, replace values of 0 by eps to ensure that the probability
-            # of an event with zero frequency does not become 0 (instead, it becomes
-            # very low through multiplication by eps) 
-            if ii in unique_dict.keys():
-                emission_mat[ii][jj] = emission_mat[ii][jj]/unique_dict[ii]
-            if emission_mat[ii][jj] == 0:
-                emission_mat[ii][jj] = eps; 
-    return emission_mat
 emission_mat = emission_prob(df_y,event_list,labels)
 
 # Convert the roots and labels dictionaries into csv files for use by other programs
