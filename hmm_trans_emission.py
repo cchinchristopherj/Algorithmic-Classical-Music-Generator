@@ -10,7 +10,7 @@ import glob
 import random
 
 # Read the harmonic labels csv file into a Pandas DataFrame 
-filename = 'Documents/Music_MachineLearning/jsbach_chorals_harmony.csv'
+filename = 'jsbach_chorals_harmony.csv'
 df_y = pandas.read_csv(filename,usecols=[16],header=None,skipinitialspace=True)
 # Reduce the number of harmonic labels by using enharmonic spellings
 df_y = df_y.replace(to_replace='C#',value='Db',regex=True)
@@ -60,7 +60,7 @@ for ii in range(len(df_y)):
 df_y = df_y.as_matrix().T
 
 # Load in the CSV files with the MIDI information for each piece in the dataset 
-path = 'Documents/Music_MachineLearning/JSB_Chorales'
+path = 'JSB_Chorales'
 names = ['Track','Time','Action','Channel','Note','Velocity']
 filenames = sorted(glob.glob(path+'/*.csv'))
 all_data = pandas.DataFrame()
