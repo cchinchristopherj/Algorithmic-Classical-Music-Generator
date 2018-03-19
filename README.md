@@ -32,7 +32,13 @@ Note: While the harmonic progressions follow the patterns learned by the HMM, th
 Modules and Installation Instructions
 =========================
 
-**Modules used:** midiutil, pygame, argparse, fluidsynth(optional)  
+**"Standard" Modules Used (Included in Anaconda Distribution):** numpy, pandas, glob, random, csv, argparse
+
+If necessary, these modules can also be installed via PyPI. For example, for the "pandas" module: 
+
+        pip install pandas
+
+**Additional Modules used:** midiutil, pygame, argparse, fluidsynth(optional)  
 
 **How to download midiutil:**
 1. Download and unzip the MIDIUtil source distribution from the following link:
